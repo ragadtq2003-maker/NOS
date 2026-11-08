@@ -1,0 +1,630 @@
+<title>أُنس الذكي من نبض</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: one-screen phone chat — header with pulse mark, scrolling thread, reply chips + composer pinned to the bottom */
+:root{
+  --rose:#E1738D; --rose-deep:#B9506B; --peach:#F5B99D; --peach-soft:#FCEBE2;
+  --bg:#FFFFFF; --surface:#FFF7F3; --fg:#33232A; --muted:#86707A; --line:#F1DCD4;
+  --bubble-me:#E1738D; --bubble-me-fg:#FFFFFF; --bubble-anas:#FFF1EA;
+  --danger:#C62E3A; --danger-bg:#FDECEC; --danger-fg:#7D1720;
+  --font:"Tajawal", "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1C1518; --surface:#251B1F; --fg:#F6E9EC; --muted:#B79EA6; --line:#3A2B31;
+  --bubble-me:#C95C77; --bubble-me-fg:#FFFFFF; --bubble-anas:#2E2126; --peach-soft:#3A2A26;
+  --rose-deep:#F09AAE; --danger:#F06A72; --danger-bg:#3A1C20; --danger-fg:#FFD3D6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1C1518; --surface:#251B1F; --fg:#F6E9EC; --muted:#B79EA6; --line:#3A2B31;
+  --bubble-me:#C95C77; --bubble-me-fg:#FFFFFF; --bubble-anas:#2E2126; --peach-soft:#3A2A26;
+  --rose-deep:#F09AAE; --danger:#F06A72; --danger-bg:#3A1C20; --danger-fg:#FFD3D6; color-scheme:dark}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.7}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{padding-block:12px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.mark{width:44px;height:44px;border-radius:50%;background:var(--peach-soft);display:grid;place-items:center;flex:none}
+.mark svg{width:30px;height:30px}
+.who{flex:1;min-width:0}
+.who h1{font-size:19px;font-weight:800;margin:0;line-height:1.2}
+.who p{margin:0;font-size:13px;color:var(--muted)}
+.btn{font:inherit;border:0;cursor:pointer;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700}
+.btn:focus-visible,textarea:focus-visible,.chip:focus-visible,input:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
+.btn-sos{background:var(--danger);color:#fff}
+.tools{display:flex;gap:8px;flex-wrap:wrap;padding-block:8px;border-bottom:1px solid var(--line);background:var(--surface)}
+.tool{background:transparent;color:var(--rose-deep);border:1px solid var(--line);font-weight:500}
+.thread{flex:1;overflow-y:auto;padding-block:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:86%;padding:10px 14px;border-radius:18px;overflow-wrap:anywhere}
+.msg p{margin:0 0 6px}.msg p:last-child{margin:0}
+.msg ul{margin:4px 0;padding-inline-start:20px}
+.anas{align-self:flex-start;background:var(--bubble-anas);border-start-start-radius:6px}
+.me{align-self:flex-end;background:var(--bubble-me);color:var(--bubble-me-fg);border-start-end-radius:6px}
+.doc{display:block;margin-top:6px;font-size:14px;color:var(--rose-deep)}
+.typing{color:var(--muted)}
+.typing::after{content:"";display:inline-block;width:1.2em;text-align:start;animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+@media (prefers-reduced-motion:reduce){.typing::after{animation:none;content:"..."}}
+.sos-card{align-self:stretch;background:var(--danger-bg);color:var(--danger-fg);border:1px solid var(--danger);border-radius:14px;padding:12px 14px}
+.sos-card strong{display:block;font-size:16px;margin-bottom:4px}
+.num{font-weight:800;font-variant-numeric:tabular-nums;user-select:all}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding-block:6px 8px;max-height:38vh;overflow-y:auto}
+.chip{font:inherit;font-size:14px;background:var(--peach-soft);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;text-align:start}
+.chip.alt{background:transparent;color:var(--rose-deep)}
+.chip.red{background:var(--danger-bg);color:var(--danger-fg);border-color:var(--danger)}
+.composer{border-top:1px solid var(--line);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;align-items:flex-end;background:var(--bg)}
+textarea{flex:1;min-width:0;font:inherit;resize:none;border:1px solid var(--line);border-radius:20px;padding:9px 14px;background:var(--surface);color:var(--fg);max-height:140px}
+.send{background:var(--rose);color:#fff;width:44px;height:44px;padding:0;display:grid;place-items:center;flex:none}
+.send:disabled{opacity:.5;cursor:default}
+.send svg{width:20px;height:20px;transform:scaleX(-1)}
+.foot{font-size:11px;color:var(--muted);text-align:center;padding-block:0 6px}
+.sheet-wrap{position:fixed;inset:0;background:rgba(30,15,20,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--bg);color:var(--fg);width:100%;max-width:560px;max-height:88%;overflow-y:auto;border-radius:22px 22px 0 0;padding-block:20px calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0 0 8px;font-size:20px;font-weight:800;text-wrap:balance}
+.sheet p{margin:0 0 10px}
+.sheet ul{margin:0 0 12px;padding-inline-start:20px}
+.sheet .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.primary{background:var(--rose);color:#fff;padding:10px 18px;font-size:15px}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);padding:10px 18px;font-size:15px}
+.warn{background:var(--danger-bg);color:var(--danger-fg);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+.aid{border-top:1px solid var(--line);padding-block:10px;display:grid;gap:2px}
+.aid b{font-size:15px}.aid span{font-size:13px;color:var(--muted)}
+.aid a{color:var(--rose-deep);font-size:14px;overflow-wrap:anywhere}
+.small{font-size:12px;color:var(--muted)}
+label{font-size:14px;color:var(--muted)}
+input[type=number]{font:inherit;width:100%;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface);color:var(--fg);margin-top:4px}
+</style>
+
+<div class="app" dir="rtl" lang="ar">
+  <header class="pad">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M3 17h6l3-7 4 13 3-9 2 3h8" stroke="#E1738D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="who">
+      <h1>أُنس</h1>
+      <p id="modeLine">رفيقك بالحمل · مش بديل عن الدكتورة</p>
+    </div>
+    <button class="btn btn-sos" id="sosBtn" type="button">حالة طارئة</button>
+  </header>
+  <div class="tools pad">
+    <button class="btn tool" id="weekBtn" type="button">أسبوع الحمل: غير محدد</button>
+    <button class="btn tool" id="aidBtn" type="button">روابط المساعدات</button>
+    <button class="btn tool" id="newBtn" type="button">محادثة جديدة</button>
+    <button class="btn tool" id="aiBtn" type="button">إعداد الذكاء</button>
+  </div>
+  <main class="thread pad" id="thread" aria-live="polite"></main>
+  <div class="chips pad" id="chips"></div>
+  <form class="composer pad" id="form">
+    <textarea id="box" rows="1" placeholder="اكتبيلي أو اختاري من فوق…" aria-label="رسالتك لأُنس"></textarea>
+    <button class="btn send" id="send" type="submit" aria-label="إرسال">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </form>
+  <div class="foot pad">معلومات أُنس تثقيفية عامة ولا تغني عن الطبيب أو القابلة.</div>
+</div>
+
+<div class="sheet-wrap" id="introSheet" hidden>
+  <div class="sheet pad" dir="rtl" role="dialog" aria-labelledby="introT">
+    <h2 id="introT">قبل ما نبلّش</h2>
+    <p>أنا أُنس، رفيقك بالحمل. بسمعك، بحكي معك، وبعطيكي نصايح عامة.</p>
+    <p><b>أنا مش طبيب.</b> معلوماتي عامة ولا تغني عن الطبيب أو القابلة، وما بشخّص ولا بوصف أدوية.</p>
+    <p>إذا عندك نزيف، وجع قوي، نزول مية، أو قلّت حركة البيبي، لا تستني: روحي على أقرب طوارئ فورًا.</p>
+    <div class="row"><button class="btn primary" id="introOk" type="button">فهمت، يلا نحكي</button></div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="sosSheet" hidden>
+  <div class="sheet pad" dir="rtl" role="dialog" aria-labelledby="sosT">
+    <h2 id="sosT">إذا عندك أي إشي من هدول، روحي على الطوارئ هلأ</h2>
+    <ul>
+      <li>نزيف من المهبل</li>
+      <li>وجع قوي أو مستمر بالبطن</li>
+      <li>صداع قوي أو زغللة بالنظر</li>
+      <li>تورّم مفاجئ بالوجه أو الإيدين</li>
+      <li>إغماء أو تشنجات</li>
+      <li>ضيق نفس شديد أو وجع بالصدر</li>
+      <li>نزول مية أو سائل من تحت</li>
+      <li>قلّت حركة البيبي أو وقفت</li>
+      <li>حرارة عالية وحالتك عم تسوء</li>
+    </ul>
+    <div class="warn">روحي على أقرب طوارئ أو قسم ولادة. إذا مش قادرة تتحركي، اطلبي الإسعاف أو حدا قريب يساعدك.<br>إسعاف الهلال الأحمر الفلسطيني: <span class="num">101</span></div>
+    <div class="row"><button class="btn ghost" data-close="sosSheet" type="button">رجوع للمحادثة</button></div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="aidSheet" hidden>
+  <div class="sheet pad" dir="rtl" role="dialog" aria-labelledby="aidT">
+    <h2 id="aidT">روابط المساعدات الرسمية</h2>
+    <div class="warn"><b>التسجيل بالمساعدات مجاني دائمًا.</b> لا تدفعي أي مبلغ، ولا تبعتي كلمة سر أو رمز تحقق لأي حدا.</div>
+    <div id="aidList"></div>
+    <p class="small" style="margin-top:10px">صفحات رسمية للجهات، جُمعت بتاريخ 8 نوفمبر 2026. روابط التسجيل نفسها بتتغير، فتأكدي منها من صفحة الجهة.</p>
+    <div class="row"><button class="btn ghost" data-close="aidSheet" type="button">رجوع للمحادثة</button></div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="aiSheet" hidden>
+  <div class="sheet pad" dir="rtl" role="dialog" aria-labelledby="aiT">
+    <h2 id="aiT">تشغيل أُنس الذكي (مجاني)</h2>
+    <p>أُنس بيستخدم Gemini من Google بالخطة المجانية. بتحتاجي مفتاح مجاني مرة وحدة بس:</p>
+    <ul>
+      <li>افتحي <b dir="ltr">aistudio.google.com/apikey</b> وسجلي دخول بحساب Google</li>
+      <li>اضغطي «Create API key» وانسخي المفتاح</li>
+      <li>الصقيه هون واضغطي حفظ</li>
+    </ul>
+    <label for="keyIn">مفتاح Gemini</label>
+    <input type="password" id="keyIn" dir="ltr" autocomplete="off" placeholder="AIza…" style="font:inherit;width:100%;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface);color:var(--fg);margin-top:4px">
+    <div class="warn" style="margin-top:12px">الخطة المجانية إلها حد رسائل باليوم، وGoogle ممكن تستخدم المحادثات لتحسين خدماتها. لا تكتبي اسمك أو رقم هويتك أو أي معلومات شخصية.</div>
+    <p class="small">المفتاح بينحفظ على هالجهاز بس. لا تشاركي الملف أو المفتاح مع حدا.</p>
+    <div class="row">
+      <button class="btn primary" id="keySave" type="button">حفظ</button>
+      <button class="btn ghost" id="keyClear" type="button">إيقاف الذكاء</button>
+      <button class="btn ghost" data-close="aiSheet" type="button">رجوع</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="weekSheet" hidden>
+  <div class="sheet pad" dir="rtl" role="dialog" aria-labelledby="weekT">
+    <h2 id="weekT">بأي أسبوع إنتي؟</h2>
+    <p>اختياري. بساعد أُنس يحكي معك عن مرحلتك.</p>
+    <label for="weekIn">أسبوع الحمل (1–42)</label>
+    <input type="number" id="weekIn" min="1" max="42" inputmode="numeric">
+    <div class="row">
+      <button class="btn primary" id="weekSave" type="button">حفظ</button>
+      <button class="btn ghost" id="weekClear" type="button">مش متأكدة</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.documentElement.dir = "rtl"; document.documentElement.lang = "ar";
+
+/* ---------- data ---------- */
+const AID = [
+  ["اليونيسف – فلسطين", "مساعدات نقدية للأسر الأكثر هشاشة ومنها الحوامل والمرضعات، وقسائم لمستلزمات النظافة والمياه", "https://www.unicef.org/sop/ar"],
+  ["صندوق الأمم المتحدة للسكان (UNFPA)", "حقائب الكرامة والنظافة، مستلزمات الولادة، ومساعدات نقدية للحوامل والمرضعات عبر الشركاء", "https://palestine.unfpa.org"],
+  ["برنامج الأغذية العالمي (WFP)", "طرود ومساعدات غذائية ونقدية، ومكملات تغذية للحوامل والمرضعات", "https://www.wfp.org/countries/palestine"],
+  ["الأونروا (UNRWA)", "مراكز صحية لرعاية الحوامل ومساعدات للاجئين", "https://www.unrwa.org"],
+  ["مجموعة عمل المساعدات النقدية", "معلومات محدثة عن برامج المساعدات النقدية بغزة", "https://response.reliefweb.int/palestine/palestine-cash-working-group"],
+  ["مكتب تنسيق الشؤون الإنسانية (OCHA)", "تحديثات عن الخدمات الإنسانية وأماكنها", "https://www.ochaopt.org"],
+  ["وزارة التنمية الاجتماعية", "برامج الحماية والتحويلات النقدية", "https://www.mosd.gov.ps"],
+];
+
+const DOC = [
+  "وأي إشي بقلقك، احكي مع دكتورتك أو القابلة.",
+  "وبزيارتك الجاية احكي للدكتورة عن هالموضوع.",
+  "ومعلوماتي عامة، فالقابلة أو الدكتورة بتقدر تفحصك وتعطيكي الجواب الأدق.",
+  "ولو زاد الإشي أو تغيّر، راجعي الدكتورة.",
+];
+
+const MOODS = [
+  { label: "منيحة الحمدلله", go: "mood_good" },
+  { label: "تعبانة", go: "mood_tired" },
+  { label: "خايفة أو قلقانة", go: "mood_scared" },
+  { label: "زعلانة ومضغوطة", go: "mood_sad" },
+  { label: "بدي أسأل عن إشي", go: "topics" },
+];
+const MOOD_WORD = { mood_tired: "تعبانة", mood_scared: "خايفة", mood_sad: "مضايقة" };
+
+const TOPICS = [
+  { label: "الغثيان والترجيع", go: "nausea" },
+  { label: "التعب والنوم", go: "sleep" },
+  { label: "الأكل بالظروف الحالية", go: "food" },
+  { label: "حركة البيبي", go: "movement" },
+  { label: "الاستعداد للولادة", go: "birth" },
+  { label: "نفسيتي", go: "mind" },
+  { label: "المساعدات", go: "aid" },
+  { label: "كمان مواضيع", go: "more", alt: true },
+];
+const MORE = [
+  { label: "المية والنظافة", go: "water" },
+  { label: "وجع الظهر", go: "back" },
+  { label: "الحرقة والإمساك", go: "heartburn" },
+  { label: "التورّم", go: "swelling" },
+  { label: "الرضاعة", go: "breast" },
+  { label: "بعد الولادة", go: "postpartum" },
+  { label: "معنى الفحوصات", go: "tests" },
+  { label: "أسئلة للدكتورة", go: "doctor_qs" },
+  { label: "علامات الخطر", go: "danger", red: true },
+];
+const BACK = { label: "موضوع تاني", go: "topics", alt: true };
+
+/* ---------- conversation nodes ----------
+   say: array of bubbles (strings or functions of ctx). "- " lines become bullets, **x** bold.
+   doc: add a doctor reminder. chips: reply options. */
+const tri = () => !week ? 0 : week <= 13 ? 1 : week <= 27 ? 2 : 3;
+
+const N = {
+  start: { say: [ () => {
+      const m = store.get("mood", null);
+      return m && MOOD_WORD[m]
+        ? `أهلين فيكي من جديد. آخر مرة حكيتيلي إنك كنتي ${MOOD_WORD[m]}.\nكيفك اليوم؟`
+        : "أهلين فيكي، أنا أُنس. أنا هون أسمعك وأحكي معك عن حملك وصحتك وكل إشي شاغل بالك.\nكيفك اليوم؟ وكيف حاسة حالك؟";
+    } ], chips: MOODS },
+
+  mood_good: { mood: true, say: ["الحمدلله، مبسوط إنك منيحة.", "في إشي حابة نحكي فيه اليوم؟ أو بدك نصيحة عن مرحلتك؟"],
+    chips: [{ label: "شو بيصير بمرحلتي؟", go: "stage" }, ...TOPICS] },
+  mood_tired: { mood: true, say: ["يا عمري، التعب بالحمل كتير شائع، وبالظروف اللي عايشينها بيصير أصعب.", "شو أكتر إشي متعبك؟"],
+    chips: [{ label: "غثيان وترجيع", go: "nausea" }, { label: "قلة نوم", go: "sleep" }, { label: "خمول طول اليوم", go: "sleep" },
+            { label: "وجع ظهر أو جسم", go: "back" }, { label: "تعب نفسي", go: "mind" }] },
+  mood_scared: { mood: true, say: ["طبيعي تحسي بخوف، وخصوصاً هالأيام. خوفك مفهوم ومش لحالك فيه.", "شو أكتر إشي مخوفك؟"],
+    chips: [{ label: "الولادة", go: "birth" }, { label: "صحة البيبي", go: "baby_worry" }, { label: "ما ألاقي مستشفى أو مواصلات", go: "no_hospital" },
+            { label: "الأكل والمي", go: "food" }, { label: "إشي تاني", go: "talk" }] },
+  mood_sad: { mood: true, say: ["شكراً إنك حكيتيلي. اللي بتحسيه مهم.", "بتحبي نحكي عن اللي مضايقك، ولا نجرب تمرين تنفس صغير يريحك شوي؟"],
+    chips: [{ label: "بدي أحكي", go: "talk" }, { label: "تمرين تنفس", go: "breathe" }, { label: "شو بساعدني نفسياً؟", go: "mind" }] },
+
+  topics: { say: ["أكيد. اختاري موضوع، أو اكتبيلي سؤالك بكلماتك:"], chips: TOPICS },
+  more: { say: ["هاي مواضيع تانية:"], chips: [...MORE, BACK] },
+
+  stage: { say: [ () => {
+      if (!week) return "إذا بتحكيلي بأي أسبوع إنتي، بقدر أحكيلك عن مرحلتك أكتر.";
+      if (tri() === 1) return `إنتي بالأسبوع ${week}، يعني بالثلث الأول. هاي المرحلة بتتكوّن فيها أعضاء البيبي الأساسية، وكتير ستات بيحسوا فيها بغثيان وتعب.\n- حمض الفوليك مهم كتير هلأ، اسألي عنه بالمركز الصحي\n- ارتاحي قد ما بتقدري\n- منيح تعملي أول زيارة متابعة حمل إذا لسا ما عملتي`;
+      if (tri() === 2) return `إنتي بالأسبوع ${week}، يعني بالثلث التاني. عادةً الغثيان بيخف وبترجع شوية طاقة، وبين الأسبوع 16 و24 بتبلشي تحسي بحركة البيبي.\n- كملي زيارات المتابعة وقياس الضغط\n- انتبهي لأكلك وشربك قد ما بتقدري\n- منيح تبلشي تفكري بخطة الولادة`;
+      return `إنتي بالأسبوع ${week}، يعني بالثلث الأخير. البيبي عم يكبر ويزيد وزنه، وممكن تحسي بتعب وصعوبة بالنوم.\n- انتبهي لحركة البيبي، وإذا قلّت روحي فوراً\n- نامي على جنبك\n- جهزي شنطة الولادة وخطة توصلي فيها للمستشفى`;
+    } ], doc: true, chips: () => week ? [{ label: "الاستعداد للولادة", go: "birth" }, { label: "حركة البيبي", go: "movement" }, BACK] : [{ label: "حطي أسبوع الحمل", act: "week" }, BACK] },
+
+  nausea: { say: [
+      () => "الغثيان والترجيع كتير شائعين بأول الحمل، ومش شرط يكونوا بس الصبح. عند أغلب الستات بيخفّوا حوالي الأسبوع 12 لـ 14." + (week && week > 16 ? `\nبس إنتي بالأسبوع ${week}، فإذا لسا مستمر منيح تحكي للدكتورة.` : ""),
+      "- كلي كميات صغيرة على فترات، وما تخلي معدتك فاضية\n- جربي إشي ناشف زي الخبز أو البسكوت أول ما تصحي\n- اشربي المي بشفّات صغيرة على مدار اليوم\n- الزنجبيل ممكن يساعد إذا متوفر\n- ابعدي عن الريحة اللي بتزيد عليكي",
+      "بتقدري تحتفظي بالمي والسوائل؟" ],
+    chips: [{ label: "آه، بس بضل لعيانة", go: "nausea_ok" }, { label: "لا، كل إشي بيطلع", go: "nausea_bad" }] },
+  nausea_ok: { say: ["منيح إنك قادرة تشربي. كملي على الكميات الصغيرة والسوائل على دفعات، وارتاحي لأنه التعب بيزيد اللعيان."], doc: true, chips: [BACK] },
+  nausea_bad: { say: ["إذا ما بتقدري تحتفظي بالسوائل، أو بولك صار غامق وقليل، أو حاسة بدوخة وضعف، هاد ممكن يعمل جفاف وبحتاج **تقييم طبي اليوم**، مش بكرة.", "روحي على أقرب مركز صحي أو طوارئ. الجفاف بالحمل إله علاج، بس لازم ما يتأخر."], chips: [{ label: "علامات الخطر", go: "danger", red: true }, BACK] },
+
+  sleep: { say: [ "التعب كتير شائع بأول الحمل وآخره، والنوم بيصعب كل ما يكبر البطن.",
+      () => "- ارتاحي أو غفي شوي بالنهار إذا قدرتي\n- نامي على جنبك" + (week >= 28 ? "، وهاد مهم كتير بمرحلتك" : "، وهاد بيصير مهم كتير من الأسبوع 28") + "\n- مخدة أو حرام مطوي بين ركبك وتحت بطنك بيريحك\n- قللي الشرب قبل النوم بساعة، بس اشربي منيح بالنهار\n- التعب الزايد أحياناً بكون من فقر الدم، فاسألي عن فحص الدم",
+      "شو أكتر إشي مصعّب عليكي النوم؟" ],
+    chips: [{ label: "التفكير والقلق", go: "mind" }, { label: "وجع ظهر", go: "back" }, { label: "الحرقة", go: "heartburn" }, { label: "الضجة والمكان", go: "sleep_place" }] },
+  sleep_place: { say: ["بالظروف اللي فيها ضجة وزحمة، جربي:\n- قطعة قماش على عيونك\n- قطن أو قماش نظيف بأدانك إذا بتقدري\n- تغفي بأوقات الهدوء بالنهار\n- إذا في حدا معك، خليه يساعدك بالشغل عشان ترتاحي", "النوم المتقطع بيتعب، فأي راحة ولو قصيرة بتفرق."], chips: [{ label: "تمرين تنفس قبل النوم", go: "breathe" }, BACK] },
+
+  food: { say: [ "بالظروف الحالية ممكن ما يكون الأكل المتنوع متوفر، وهاد مش ذنبك. الهدف تاخدي اللي بتقدري عليه من أنواع مختلفة.",
+      "- **بروتين:** عدس، فول، حمص، فاصوليا، بيض مستوي منيح، أو سمك معلب إذا متوفر\n- **طاقة:** خبز، رز، برغل، معكرونة\n- **خضرة وفواكه:** أي إشي متوفر، مغسول بمي نظيفة\n- وجبات صغيرة ومتكررة إذا الكمية قليلة",
+      "ابعدي عن اللحمة أو البيض النيّ أو مش مستوي منيح، والحليب والأجبان مش المبسترة، وأي أكل ريحته أو شكله غريب.",
+      () => "الحديد وحمض الفوليك مهمين كتير بالحمل" + (tri() === 1 ? "، وخصوصاً بمرحلتك" : "") + ". اسألي بأقرب مركز صحي أو عيادة أونروا إذا بيوزعوهم، والدكتورة بتحدد إذا بتحتاجيهم وقديش." ],
+    chips: [{ label: "ما في أكل كافي عندي", go: "food_short" }, { label: "المية النظيفة", go: "water" }, BACK] },
+  food_short: { say: ["سامعتك، وهاد صعب كتير.", "في جهات بتوزع طرود وكوبونات ومكملات تغذية للحوامل والمرضعات. جمعتلك روابطهم الرسمية.", "وإذا حاسة بدوخة كتير أو ضعف شديد أو وزنك عم ينزل، احكي مع المركز الصحي، لأنه في برامج تغذية خاصة للحوامل."],
+    chips: [{ label: "افتحي روابط المساعدات", act: "aid" }, BACK] },
+
+  water: { say: [ "المي النظيفة مهمة كتير إلك وللبيبي، والجفاف بالحمل بيتعب.",
+      "- اشربي على مدار اليوم، ولون البول الفاتح علامة منيحة\n- إذا مش متأكدة إنه المي نظيفة، اغليها لتفور فوران قوي دقيقة كاملة واتركيها تبرد\n- خزّني المي بوعاء نظيف ومسكّر\n- اغسلي إيديكي بالمي والصابون قبل الأكل وبعد الحمّام قد ما بتقدري",
+      "تغيّر الإفرازات بالحمل شائع، بس إذا صار في حكة، أو ريحة مزعجة، أو حرقة بالبول، احكي للدكتورة لأنه ممكن يحتاج علاج." ],
+    chips: [{ label: "مستلزمات نظافة وحقائب كرامة", act: "aid" }, BACK] },
+
+  back: { say: [ "وجع الظهر شائع لأنه البطن بيكبر والأربطة بترتخي.",
+      "- لما ترفعي إشي، اثني ركبك وخلي ظهرك مستقيم، وتجنبي الحمل التقيل\n- غيري وضعيتك كل شوي\n- حطي مخدة ورا ظهرك لما تقعدي، وبين ركبك لما تنامي\n- المشي الخفيف والحركة اللطيفة بيساعدوا",
+      "بس إذا الوجع قوي، أو بيجي ويروح بانتظام، أو معه نزيف أو حرارة أو حرقة بالبول، لازم تنفحصي بسرعة، لأنه أحياناً بكون طلق مبكر أو التهاب." ],
+    doc: true, chips: [BACK] },
+
+  heartburn: { say: [ "الحرقة والإمساك من أشهر مضايقات الحمل، وسببهم الهرمونات وضغط البيبي.",
+      "**للحرقة:**\n- وجبات صغيرة بدل الكبيرة\n- ما تنامي مباشرة بعد الأكل\n- ارفعي راسك بمخدة زيادة وإنتي نايمة\n- خففي المقلي والحار",
+      "**للإمساك:**\n- اشربي مي كتير\n- كلي عدس وفول وخضرة وخبز أسمر إذا متوفر\n- تحركي وامشي شوي كل يوم",
+      "وما تاخدي دوا للحرقة أو الإمساك بدون ما تسألي الدكتورة أو الصيدلي، لأنه مش كل الأدوية مناسبة للحمل." ], chips: [BACK] },
+
+  swelling: { say: [ "تورّم خفيف بالرجلين والكاحل شائع، خصوصاً آخر الحمل وآخر النهار.",
+      "- ارفعي رجليكي وإنتي قاعدة\n- ما تضلي واقفة فترات طويلة\n- حركي رجليكي وامشي شوي",
+      "بس **روحي على الطوارئ فوراً** إذا التورم إجا فجأة بالوجه أو الإيدين، أو معه صداع قوي أو زغللة أو وجع تحت الضلوع. هاي ممكن تكون علامات ارتفاع ضغط الحمل (تسمم الحمل) وبتحتاج فحص سريع.",
+      "وإذا رجل وحدة بس متورمة وحمرا وبتوجع، كمان لازم تنفحصي بسرعة." ], chips: [{ label: "علامات الخطر", go: "danger", red: true }, BACK] },
+
+  movement: { say: [
+      () => week && week < 16
+        ? "عادةً بتبلشي تحسي بحركة البيبي بين الأسبوع 16 و24، وبالحمل الأول ممكن تتأخر شوي. فإذا لسا ما حسيتي فيه، هاد طبيعي بمرحلتك."
+        : "بعد ما تبلشي تحسي فيه، كل بيبي إله نمط حركة خاص فيه. المهم تتعرفي على نمط بيبيك.",
+      "**إذا حسيتي إنه حركته قلّت أو تغيّرت أو وقفت، لا تستني لبكرة.** روحي على قسم الولادة أو الطوارئ فوراً عشان يسمعوا نبضه.",
+      "وما تعتمدي على أكل أو شرب بارد بالبيت عشان تحركيه وتطمّني حالك." ],
+    chips: [{ label: "حركته قلّت هلأ", act: "sos", red: true }, BACK] },
+
+  baby_worry: { say: ["خوفك على البيبي من أكتر الأشياء الطبيعية.", "أحسن إشي بيطمّنك هو المتابعة: زيارات الحمل، قياس الضغط، والسونار لما يكون متاح. وبالبيت، تعرّفي على حركة البيبي وانتبهي لعلامات الخطر.", "في إشي معين مقلقك بخصوص البيبي؟ اكتبيلي."],
+    doc: true, chips: [{ label: "حركة البيبي", go: "movement" }, { label: "علامات الخطر", go: "danger", red: true }, { label: "أسئلة للدكتورة", go: "doctor_qs" }] },
+
+  birth: { say: [ "الخوف من الولادة طبيعي، وكل ما تكوني مجهزة أكتر بيخف.",
+      "**خطة صغيرة بتريحك:**\n- وين رح تولدي، ووين أقرب بديل إذا ما قدرتي توصلي\n- كيف رح توصلي، ومين رح يكون معك\n- رقم الإسعاف وأرقام ناس قريبين مكتوبين على ورقة\n- شنطة صغيرة: هويتك وأوراقك، فوط صحية، قماش نظيف، ملابس للبيبي، غطا",
+      () => "**علامات بداية الولادة:**\n- طلق منتظم بيقرب ويقوى\n- نزول مية\n- إفرازات مع دم خفيف\nإذا صار هيك روحي على قسم الولادة." + (!week || week < 37 ? "\nوإذا صار هالإشي قبل الأسبوع 37، روحي فوراً لأنه ممكن تكون ولادة مبكرة." : "") ],
+    chips: [{ label: "خايفة ما ألاقي مستشفى", go: "no_hospital" }, { label: "تمرين تنفس", go: "breathe" }, BACK] },
+  no_hospital: { say: [ "خوفك منطقي بالظروف اللي عايشينها.",
+      "- اعرفي من هلأ أقرب مكانين ممكن تولدي فيهم: مستشفى أو مركز ولادة أو نقطة طبية\n- اسألي القابلة أو المركز الصحي عن أقرب مكان شغال بمنطقتك، لأنه الأماكن بتتغير\n- اتفقي مع حدا قريب يكون جاهز يساعدك بالمواصلات\n- بعض المنظمات بتوزع حقائب ولادة نظيفة",
+      "وإذا بلشت الولادة وما قدرتي توصلي، اطلبي الإسعاف (الهلال الأحمر **101**) أو حدا قريب منك فيه خبرة." ],
+    chips: [{ label: "روابط المساعدات", act: "aid" }, BACK] },
+
+  mind: { say: [ "اللي عم تمري فيه مش سهل أبداً. القلق والحزن بالحمل، خصوصاً بهالظروف، شائعين ومش علامة ضعف.",
+      "- احكي مع حدا بتثقي فيه عن اللي حاسة فيه\n- خلي إلك روتين صغير بيريحك، حتى لو بسيط\n- ارتاحي واطلبي مساعدة بالشغل من اللي حواليكي\n- خففي الأخبار قبل النوم إذا بتزيد قلقك",
+      "إذا الحزن أو القلق صار معك أغلب الأيام لأكتر من أسبوعين، أو مش قادرة تستمتعي بأي إشي، احكي للدكتورة أو القابلة. في مساحات آمنة للنساء ودعم نفسي بتقدمها منظمات زي UNFPA.",
+      "وإذا إجتك أفكار إنك تأذي حالك، احكي فوراً مع حدا قريب منك واطلبي مساعدة طبية. إنتي مش لحالك." ],
+    chips: [{ label: "تمرين تنفس", go: "breathe" }, { label: "بدي أحكي", go: "talk" }, BACK] },
+  talk: { say: ["أنا سامعك. اكتبيلي اللي ببالك، وخدي وقتك."], chips: [], listen: true },
+  listened: { say: ["سامعتك. اللي بتحكيه ثقيل، ومنيح إنك طلعتيه ومش ضليتي شايلته لحالك.", "شو ممكن يساعدك ولو شوي اليوم؟"],
+    chips: [{ label: "تمرين تنفس", go: "breathe" }, { label: "أحكي مع حدا قريب", go: "someone" }, { label: "نصايح للنفسية", go: "mind" }, BACK] },
+  someone: { say: ["فكرة منيحة. اختاري حدا بترتاحي معه، أم، أخت، صاحبة، أو جارة، واحكيله ولو جملة: «أنا تعبانة نفسياً وبدي حدا يسمعني».", "وإذا بتحسي إنه الحمل النفسي كبير، القابلة أو الدكتورة بتقدر توصلك لدعم نفسي مختص."], chips: [BACK] },
+  breathe: { say: ["تعالي نجرب سوا دقيقة:", "- قعدي مرتاحة وحطي إيدك على بطنك\n- خدي نفس من أنفك وإنتي عم تعدي لـ 4\n- طلعيه بشويش من تمك وإنتي عم تعدي لـ 6\n- عيدي هيك 5 مرات", "الزفير الطويل بيساعد جسمك يهدى. خبريني لما تخلصي."],
+    chips: [{ label: "خلصت، أحسن شوي", go: "breathe_done" }, { label: "لسا متوترة", go: "breathe_more" }] },
+  breathe_done: { say: ["منيح كتير. فيكي ترجعي لهالتمرين أي وقت، حتى بالليل قبل النوم.", "في إشي تاني حابة نحكي فيه؟"], chips: TOPICS },
+  breathe_more: { say: ["ماشي، مش لازم يخف كل إشي مرة وحدة.", "شو اللي شاغل بالك أكتر هلأ؟ اكتبيلي، أو احكي مع حدا قريب منك إذا بتقدري.", "وإذا التوتر قوي كتير ومعه ضيق نفس أو وجع صدر، روحي على الطوارئ."], chips: [], listen: true },
+
+  breast: { say: [ "الرضاعة الطبيعية بتحمي البيبي كتير، خصوصاً لما المي النظيفة مش مضمونة، لأنه حليبك نظيف وجاهز ودايماً بالحرارة الصح.",
+      "- رضعيه بأول ساعة بعد الولادة، وحطيه على صدرك جلد على جلد\n- حليب أول الأيام (اللبأ) قليل بس كتير مهم\n- رضعيه كل ما يطلب، عادةً 8 لـ 12 مرة باليوم\n- منظمة الصحة العالمية بتنصح برضاعة طبيعية بس لأول 6 شهور\n- اشربي وكلي قد ما بتقدري",
+      "إذا صار عندك وجع قوي، أو احمرار وسخونة بالصدر مع حرارة، أو البيبي مش عم يبلل حفاضات كفاية، راجعي الدكتورة أو القابلة." ], chips: [BACK] },
+
+  postpartum: { say: [ "بعد الولادة جسمك بحتاج وقت يتعافى، والنزيف (النفاس) بيضل كم أسبوع وبيخف شوي شوي.",
+      "- ارتاحي قد ما بتقدري، واطلبي مساعدة بالبيت\n- غيري الفوط باستمرار واغسلي إيديكي\n- كلي واشربي منيح، خصوصاً إذا عم ترضعي",
+      "**روحي على الطوارئ فوراً إذا:**\n- نزيف قوي بيعبي فوطة بساعة أو أقل، أو كتل دم كبيرة\n- حرارة عالية أو ريحة إفرازات مزعجة\n- صداع قوي أو زغللة\n- ضيق نفس أو وجع صدر\n- رجل متورمة وحمرا وبتوجع",
+      "وطبيعي تحسي ببكي وتقلبات مزاج بأول أسبوعين. إذا استمر أكتر أو صار قوي، احكي للدكتورة." ], chips: [{ label: "الرضاعة", go: "breast" }, { label: "نفسيتي", go: "mind" }, BACK] },
+
+  tests: { say: [ "ما بقدر أفسرلك نتائجك إنتي، هاد شغل الدكتورة. بس بقدر أشرحلك ليش بيعملوا أشهر الفحوصات:",
+      "- **السونار:** بيشوف عمر الحمل ونمو البيبي ووضعه ومكان المشيمة\n- **فحص الدم:** بيكشف فقر الدم، وهاد شائع بالحمل\n- **فحص البول:** بيكشف الالتهابات والبروتين\n- **قياس الضغط:** مهم لأنه ارتفاعه ممكن يكون علامة تسمم حمل\n- **فحص السكر:** بيكشف سكري الحمل",
+      "إذا عندك نتيجة مش فاهمتها، اكتبي سؤالك عنها وخديه معك للدكتورة." ],
+    chips: [{ label: "أسئلة للدكتورة", go: "doctor_qs" }, BACK] },
+  doctor_qs: { say: [ "فكرة منيحة! هاي أسئلة ممكن تاخديها معك للزيارة، اختاري اللي بيهمك:",
+      "- هل نمو البيبي طبيعي لعمر الحمل؟\n- شو نتيجة فحص الدم؟ بحتاج حديد أو فيتامينات؟\n- ضغطي طبيعي؟\n- شو العلامات اللي لازم أرجع فيها فوراً؟\n- وين المكان المناسب إلي أولد فيه؟\n- وزيدي سؤالك عن الإشي اللي مقلقك",
+      "اكتبيهم على ورقة أو على تلفونك قبل الزيارة، لأنه الواحد بينسى وقت الفحص." ], chips: [BACK] },
+
+  aid: { say: [ "جمعتلك روابط الجهات الرسمية اللي بتقدم كوبونات وطرود ومساعدات مالية وحقائب نظافة وفيتامينات للحوامل.",
+      "**تذكير مهم:** التسجيل مجاني دايماً. لا تدفعي ولا تعطي كلمة سر أو رمز تحقق لأي حدا، حتى لو حكى إنه من منظمة." ],
+    chips: [{ label: "افتحي الروابط", act: "aid" }, BACK] },
+
+  danger: { say: [ "هاي علامات الخطر اللي ما بتستنى:",
+      "- نزيف من المهبل\n- وجع قوي أو مستمر بالبطن\n- صداع قوي أو زغللة، أو تورّم مفاجئ بالوجه والإيدين\n- إغماء أو تشنجات\n- ضيق نفس شديد أو وجع صدر\n- نزول مية\n- قلّت حركة البيبي أو وقفت\n- حرارة عالية وحالتك عم تسوء",
+      "إذا عندك إشي منهم هلأ، روحي على أقرب طوارئ أو قسم ولادة فوراً." ],
+    chips: [{ label: "عندي إشي منهم هلأ", act: "sos", red: true }, BACK] },
+
+  meds: { say: [ "ما بقدر أنصحك بأدوية أو جرعات، لأنه بالحمل الدكتورة أو الصيدلي هم اللي بيقرروا حسب حالتك. وما توقفي أي دوا موصوف إلك بدون ما تسألي الدكتورة.",
+      "بس بقدر أساعدك تجهزي سؤالك للدكتورة، أو نحكي عن إشي بيخفف عليكي بدون أدوية. شو اللي مضايقك؟" ],
+    chips: [{ label: "أسئلة للدكتورة", go: "doctor_qs" }, ...TOPICS.slice(0, 4), BACK] },
+
+  hello: { say: ["أهلين فيكي! كيفك اليوم؟"], chips: MOODS },
+  thanks: { say: ["العفو يا قلبي، أنا هون أي وقت.", "في إشي تاني حابة نحكي فيه؟"], chips: TOPICS },
+  unknown: { say: ["ما فهمت عليكي منيح. ممكن تحكيلي بكلمات تانية، أو اختاري موضوع قريب:"], chips: TOPICS },
+};
+
+/* ---------- understanding free text ---------- */
+const norm = s => s.replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/ؤ/g, "و").replace(/ئ/g, "ي").toLowerCase();
+
+const RED = /(نزيف|بنزف|نزل(ت)? (مني )?دم|نزول دم|بنزل دم|نازل دم|في دم|دم من تحت|نزلت (مي|ميه|مية|ماي)|نزول (مي|ميه|ماء|سايل)|ماء الجنين|مي(ه)? الراس|ما ?بحس (ب)?حرك|ما في حرك|وقفت (ال)?حرك|قل+ت (ال)?حرك|قله (ال)?حرك|ما (عم )?بيتحرك|ما (عم )?بتحرك|صداع (قوي|شديد)|زغلل|اغم[اي]|اغماء|فقدت الوعي|تشنج|ما ?بقدر اتنفس|مش قادره اتنفس|ضيق (نفس|تنفس) (شديد|قوي)|مخنوقه|وجع (ب|في )?(ال)?صدر|الم (ب|في )?(ال)?صدر|وجع بصدري|وجع (قوي|شديد|كتير) (ب|في )?(ال)?بطن|الم شديد|مغص (قوي|شديد)|حراره (عاليه|كتير)|سخنه كتير|بدي (اموت|انتحر)|اذي حالي|اوذي نفسي|ما بدي اعيش)/;
+const HARM = /(بدي (اموت|انتحر)|اذي حالي|اوذي نفسي|ما بدي اعيش)/;
+
+const KEYS = [
+  ["meds", /(دوا|دواء|حبوب|حبه|جرعه|مسكن|بنادول|اكامول|مضاد|ابره)/],
+  ["postpartum", /(بعد الولاده|نفاس|ولدت)/],
+  ["aid", /(مساعد|كوبون|كابون|طرد|طرود|مصاري|فلوس|معونه|تسجيل)/],
+  ["doctor_qs", /(اسئله للدكتور|شو اسال)/],
+  ["breast", /(رضاع|ارضع|برضع|حليب)/],
+  ["movement", /(حركه|بيتحرك|يتحرك|رفس|ركل)/],
+  ["nausea", /(غثيان|لعيان|ترجيع|بستفرغ|استفراغ|برجع|وحام|قرفان)/],
+  ["swelling", /(تورم|متورم|انتفاخ|منفوخ|ورم)/],
+  ["heartburn", /(حرقه|حموضه|امساك|غازات)/],
+  ["back", /(ظهر|حوض)/],
+  ["water", /((^|\s)(مي|ميه|المي|الميه|ماء)(\s|$)|نظافه|حمام|افرازات|حكه)/],
+  ["food", /(اكل|تغذيه|غذا|فيتامين|حديد|فوليك|جوع)/],
+  ["tests", /(سونار|تحليل|تحاليل|فحص|نتيجه|ضغط|سكر)/],
+  ["birth", /(ولاده|بولد|اولد|طلق|شنطه)/],
+  ["mind", /(خايف|خوف|قلق|زعلان|حزين|مكتئب|اكتئاب|ببكي|نفسي|مضغوط|توتر|متوتر)/],
+  ["sleep", /(تعب|نوم|بنام|انام|نايم|ارق|نعس|خمول|ارهاق)/],
+  ["stage", /(اسبوع|مرحلتي|شهر)/],
+  ["hello", /^(مرحبا|هاي|اهلين|اهلا|السلام|صباح|مسا)/],
+  ["thanks", /(شكرا|يسلمو|تسلم|مشكور)/],
+];
+
+/* ---------- state ---------- */
+const $ = id => document.getElementById(id);
+const thread = $("thread"), box = $("box"), chipsEl = $("chips");
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("anasai_" + k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("anasai_" + k, JSON.stringify(v)); }catch(e){} },
+};
+let log = store.get("log", []);      // [{r:"a"|"u"|"sos", t}]
+let chips = store.get("chips", null);
+let lastNode = store.get("last", null);
+let week = store.get("week", null);
+let docIdx = 0, busy = false;
+
+/* ---------- rendering ---------- */
+function esc(s){ return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+function render(text){
+  let html = "", list = [];
+  const flush = () => { if (list.length){ html += "<ul>" + list.map(l => "<li>" + inline(l) + "</li>").join("") + "</ul>"; list = []; } };
+  for (const raw of text.split("\n")){
+    const l = raw.trim();
+    if (l.startsWith("- ")) { list.push(l.slice(2)); continue; }
+    flush(); if (l) html += "<p>" + inline(l) + "</p>";
+  }
+  flush(); return html;
+}
+function draw(item){
+  const d = document.createElement("div");
+  if (item.r === "sos"){
+    d.className = "sos-card"; d.setAttribute("role", "alert");
+    d.innerHTML = '<strong>اللي بتوصفيه ممكن يكون علامة خطر.</strong>روحي هلأ على أقرب طوارئ أو قسم ولادة، ولا تستني. إذا مش قادرة تتحركي، اطلبي الإسعاف أو حدا قريب يساعدك. إسعاف الهلال الأحمر: <span class="num">101</span>';
+  } else if (item.r === "u"){
+    d.className = "msg me"; d.textContent = item.t;
+  } else {
+    d.className = "msg anas"; d.innerHTML = render(item.t) + (item.doc ? '<span class="doc">' + esc(item.doc) + "</span>" : "");
+  }
+  thread.appendChild(d); thread.scrollTop = thread.scrollHeight;
+}
+function push(item){ log.push(item); store.set("log", log.slice(-120)); draw(item); }
+function showChips(list){
+  chips = list; store.set("chips", list);
+  chipsEl.innerHTML = "";
+  chipsEl.hidden = !list || !list.length;
+  (list || []).forEach(c => {
+    const b = document.createElement("button"); b.type = "button";
+    b.className = "chip" + (c.alt ? " alt" : "") + (c.red ? " red" : "");
+    b.textContent = c.label; b.onclick = () => pick(c);
+    chipsEl.appendChild(b);
+  });
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+async function say(id){
+  const node = N[id] || N.unknown;
+  busy = true; showChips([]);
+  if (node.mood) store.set("mood", id);
+  lastNode = id; store.set("last", id);
+  const parts = node.say.map(s => typeof s === "function" ? s() : s);
+  for (let i = 0; i < parts.length; i++){
+    const t = document.createElement("div"); t.className = "msg anas typing"; t.textContent = "أُنس عم يكتب";
+    thread.appendChild(t); thread.scrollTop = thread.scrollHeight;
+    await wait(reduce ? 50 : Math.min(1200, 350 + parts[i].length * 6));
+    t.remove();
+    const item = { r: "a", t: parts[i] };
+    if (node.doc && i === parts.length - 1){ item.doc = DOC[docIdx++ % DOC.length]; }
+    push(item);
+  }
+  showChips(typeof node.chips === "function" ? node.chips() : node.chips);
+  busy = false;
+}
+
+function pick(c){
+  if (busy) return;
+  if (c.act === "aid"){ open("aidSheet"); return; }
+  if (c.act === "sos"){ push({ r: "u", t: c.label }); push({ r: "sos" }); open("sosSheet"); return; }
+  if (c.act === "week"){ $("weekBtn").click(); return; }
+  push({ r: "u", t: c.label });
+  say(c.go);
+}
+
+function understand(text){
+  const n = norm(text);
+  if (RED.test(n)) return HARM.test(n) ? "harm" : "red";
+  if (lastNode && N[lastNode] && N[lastNode].listen) return "listened";
+  for (const [id, re] of KEYS) if (re.test(n)) return id;
+  return "unknown";
+}
+N.harm = { say: ["شكراً إنك حكيتيلي، وأنا مهتم فيكي كتير.", "إنتي بأمان هلأ؟ احكي **فوراً** مع حدا قريب منك وخليه يضل معك، واطلبي مساعدة طبية أو روحي على أقرب طوارئ. إنتي مش لحالك، وفي ناس بقدروا يساعدوكي."], chips: [{ label: "تمرين تنفس", go: "breathe" }, { label: "أحكي مع حدا قريب", go: "someone" }] };
+N.red_follow = { say: ["لما تكوني بأمان وتطمّني على حالك، أنا هون إذا بدك نحكي."], chips: [{ label: "علامات الخطر", go: "danger", red: true }, BACK] };
+
+/* ---------- AI mode (Gemini free tier) ---------- */
+const MODELS = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.6-flash", "gemini-flash-latest"];
+let apiKey = store.get("key", "");
+function setMode(){ $("modeLine").textContent = apiKey ? "رفيقك الذكي بالحمل · مش بديل عن الدكتورة" : "رفيقك بالحمل · مش بديل عن الدكتورة"; $("aiBtn").textContent = apiKey ? "الذكاء: شغّال" : "إعداد الذكاء"; }
+
+function rules(){
+  const aid = AID.map(a => "- " + a[0] + ": " + a[2]).join("\n");
+  return `أنت «أُنس»، رفيق ومساعد ذكي داخل تطبيق «نبض» (NABD) للنساء الحوامل في قطاع غزة.
+
+دورك:
+- إنت مش بس بتجاوب على أسئلة؛ إنت رفيق بيحكي معها. اسمعها، تفاعل مع كلامها، اسألها عن حالها وعن اللي بقلقها، وانصحها نصايح عملية تناسب وضعها.
+- جاوب على أي سؤال بتسأله عن الحمل والولادة والرضاعة وما بعد الولادة والعناية بالمولود والتغذية والنفسية والمساعدات وحياتها اليومية بالظروف الحالية.
+- تابع معها واربط كلامك باللي حكته قبل بالمحادثة.
+- اسأل سؤال واحد بس بالرد، ولما يكون مفيد.
+- إذا بيّن عليها خوف أو حزن أو تعب نفسي: اعترف بمشاعرها بلطف أول، بعدين انصح.
+- اقترح خطوات صغيرة ممكن تعملها اليوم، ومراعي إنه الأكل والمي النظيفة والأدوية والمواصلات والمستشفى ممكن ما يكونوا متوفرين. البدائل بس إذا مدعومة طبيًا، وما تأخر الطوارئ.
+
+أسلوبك:
+- عامية فلسطينية بسيطة، بصيغة المؤنث، دافئ بدون مبالغة وبدون تكرار.
+- ردود قصيرة: 2 لـ 6 جمل أو نقاط قليلة. ابدأ مباشرة.
+- اشرح المصطلحات الطبية بكلمات سهلة.
+- نص عادي فقط. مسموح نقاط تبدأ بـ "- " و**كلمة** للتأكيد. بدون عناوين أو جداول.
+- ما تحكم عليها وما تخوفها. احترم أسئلة الصحة الجنسية والإنجابية.
+
+السلامة (أهم إشي):
+- إنت مش دكتور ولا بديل عن الدكتورة أو القابلة. أي رد فيه معلومة صحية يخلص بجملة قصيرة متنوعة الصياغة إنها تستشير الدكتورة أو القابلة.
+- ممنوع: تشخيص قاطع، أسماء أدوية مع جرعات، تعديل أو إيقاف دواء موصوف، تفسير تفصيلي لتحاليلها أو صور السونار، ضمان إنه الحمل أو الجنين بخير، أو طمأنة بدون معلومات كافية. إذا أصرّت، وضّح إنه قرار الدكتورة واعرض تساعدها تجهز أسئلة للزيارة.
+- علامات الخطر: نزيف، ألم شديد أو مستمر بالبطن، صداع شديد أو زغللة، تورم مفاجئ بالوجه والإيدين، إغماء أو تشنجات، ضيق نفس شديد أو ألم صدر، نزول مية، قلة أو توقف حركة الجنين، حرارة عالية مع تدهور. إذا عندها إشي منهم: جملتين بالكثير إنه لازم تروح هلأ على أقرب طوارئ أو قسم ولادة أو تطلب الإسعاف (الهلال الأحمر 101) أو حدا قريب، بدون شرح طويل وبدون علاج بيتي. إذا بس بتسأل معلومة عامة، جاوب باختصار ووضّح متى تروح.
+- إذا لمّحت لإيذاء نفسها: تعامل بجدية ولطف، اسألها إذا هي بأمان، وشجعها تحكي فورًا مع حدا قريب وتطلب مساعدة.
+- لا تطلب اسمها أو رقم هويتها أو معلومات شخصية.
+
+المعلومات:
+- اعتمد على توصيات WHO وACOG وNHS ووزارة الصحة الفلسطينية. لا تخترع مصادر أو أرقام أو روابط. إذا مش متأكد، احكي هيك ووجّهها لمختص.
+- ما تفترض أسبوع الحمل أو حالتها الصحية.
+
+المساعدات: إذا سألت عن كوبونات أو طرود أو مساعدات مالية أو نظافة أو فيتامينات، وجّهها لزر «روابط المساعدات» أو لهالصفحات الرسمية بس:
+${aid}
+ذكّرها إنه التسجيل مجاني، وما تدفع ولا تعطي كلمة سر أو رمز تحقق لحدا، وما توعدها بمساعدة.
+
+خارج النطاق: إذا سألت عن إشي بعيد عن صحتها وحملها وأمومتها وظروفها، رد بلطف وباختصار وارجع للموضوع.
+
+السياق: المحادثة بلّشت إنك رحبت فيها وسألتها كيف حالها. أسبوع الحمل من ملفها: ${week ? week : "غير معروف"}.`;
+}
+
+async function askAI(){
+  const hist = [];
+  for (const m of log.slice(-30)){
+    if (m.r !== "u" && m.r !== "a") continue;
+    const role = m.r === "u" ? "user" : "model", text = m.t + (m.doc ? "\n" + m.doc : "");
+    if (hist.length && hist[hist.length - 1].role === role) hist[hist.length - 1].parts[0].text += "\n" + text;
+    else hist.push({ role, parts: [{ text }] });
+  }
+  while (hist.length && hist[0].role !== "user") hist.shift();
+  const saved = store.get("model", null);
+  const list = saved ? [saved, ...MODELS.filter(x => x !== saved)] : MODELS;
+  for (const m of list){
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({ system_instruction: { parts: [{ text: rules() }] }, contents: hist,
+        generationConfig: { temperature: 0.6, maxOutputTokens: 800 } }),
+    });
+    if (res.status === 404) continue;
+    if (!res.ok){ const e = new Error("http"); e.status = res.status; throw e; }
+    const j = await res.json();
+    const t = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts || []).map(p => p.text || "").join("").trim();
+    if (!t){ const e = new Error("empty"); e.status = 0; throw e; }
+    store.set("model", m); return t;
+  }
+  const e = new Error("nomodel"); e.status = 404; throw e;
+}
+const AI_ERR = s =>
+  s === 400 || s === 401 || s === 403 ? "مفتاح Gemini مش شغّال. تأكدي منه من «إعداد الذكاء». هلأ رح أرد عليكي من معلوماتي الجاهزة:" :
+  s === 429 ? "خلصت الرسائل المجانية لهلأ، بترجع بكرة. هلأ رح أرد عليكي من معلوماتي الجاهزة:" :
+  "ما قدرت أوصل للذكاء هلأ. رح أرد عليكي من معلوماتي الجاهزة:";
+
+async function aiReply(){
+  busy = true; showChips([]);
+  const t = document.createElement("div"); t.className = "msg anas typing"; t.textContent = "أُنس عم يفكر";
+  thread.appendChild(t); thread.scrollTop = thread.scrollHeight;
+  try{
+    const reply = await askAI();
+    t.remove(); push({ r: "a", t: reply }); lastNode = null; store.set("last", null);
+    showChips([BACK]); busy = false;
+  }catch(e){
+    t.remove(); busy = false;
+    push({ r: "a", t: AI_ERR(e.status) });
+    const last = [...log].reverse().find(m => m.r === "u");
+    say(understand(last ? last.t : "") === "red" ? "red_follow" : understand(last ? last.t : ""));
+  }
+}
+
+function send(){
+  const text = box.value.trim();
+  if (!text || busy) return;
+  box.value = ""; autosize();
+  push({ r: "u", t: text });
+  const id = understand(text);
+  if (id === "red") push({ r: "sos" });
+  if (apiKey && navigator.onLine){ aiReply(); return; }
+  if (id === "red"){ say("red_follow"); return; }
+  say(id);
+}
+
+/* ---------- wiring ---------- */
+function autosize(){ box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
+box.addEventListener("input", autosize);
+box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); send(); } });
+$("form").addEventListener("submit", e => { e.preventDefault(); send(); });
+function open(id){ $(id).hidden = false; } function close(id){ $(id).hidden = true; }
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => close(b.dataset.close));
+document.querySelectorAll(".sheet-wrap").forEach(w => w.addEventListener("click", e => { if (e.target === w && w.id !== "introSheet") w.hidden = true; }));
+$("sosBtn").onclick = () => open("sosSheet");
+$("aidBtn").onclick = () => open("aidSheet");
+$("weekBtn").onclick = () => { $("weekIn").value = week || ""; open("weekSheet"); };
+function setWeekLabel(){ $("weekBtn").textContent = "أسبوع الحمل: " + (week ? week : "غير محدد"); }
+$("weekSave").onclick = () => {
+  const v = parseInt($("weekIn").value, 10); week = (v >= 1 && v <= 42) ? v : null;
+  store.set("week", week); close("weekSheet"); setWeekLabel();
+  if (week && !busy){ push({ r: "u", t: "أنا بالأسبوع " + week }); say("stage"); }
+};
+$("weekClear").onclick = () => { week = null; store.set("week", null); close("weekSheet"); setWeekLabel(); };
+$("newBtn").onclick = () => { if (busy) return; log = []; store.set("log", log); thread.innerHTML = ""; say("start"); };
+$("introOk").onclick = () => { store.set("introOk", true); close("introSheet"); };
+$("aidList").innerHTML = AID.map(a => `<div class="aid"><b>${esc(a[0])}</b><span>${esc(a[1])}</span><a href="${a[2]}" target="_blank" rel="noopener">${a[2].replace(/^https:\/\/(www\.)?/, "")}</a></div>`).join("");
+
+$("aiBtn").onclick = () => { $("keyIn").value = apiKey; open("aiSheet"); };
+$("keySave").onclick = () => { apiKey = $("keyIn").value.trim(); store.set("key", apiKey); store.set("model", null); close("aiSheet"); setMode(); };
+$("keyClear").onclick = () => { apiKey = ""; store.set("key", ""); $("keyIn").value = ""; close("aiSheet"); setMode(); };
+setMode();
+setWeekLabel();
+if (!store.get("introOk", false)) open("introSheet");
+if (log.length){ log.forEach(draw); showChips(chips); } else { say("start"); }
+</script>
